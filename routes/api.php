@@ -10,12 +10,14 @@ Route::get('/user', function (Request $request) {
 })->middleware('auth:sanctum');
 
 Route::get('/produtos', [ProdutoController::class, 'index']);
-Route::post('/pedidos', [PedidoController::class, 'store']);
-Route::get('/pedidos', [PedidoController::class, 'index']);
-Route::get('/pedidos/{id}', [PedidoController::class, 'show']);
-Route::put('/pedidos/{id}', [PedidoController::class, 'update']);
+
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+
 Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/pedidos', [PedidoController::class, 'store']);
+    Route::get('/pedidos', [PedidoController::class, 'index']);
+    Route::get('/pedidos/{id}', [PedidoController::class, 'show']);
+    Route::put('/pedidos/{id}', [PedidoController::class, 'update']);
     Route::post('/logout', [AuthController::class, 'logout']);
 });

@@ -4,22 +4,24 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePedidoRequest;
+use App\Http\Requests\UpdatePedidoRequest;
 use App\Models\Pedido;
 use App\Models\Produto;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use App\Http\Requests\UpdatePedidoRequest;
 
 class PedidoController extends Controller
 {
     public function store(StorePedidoRequest $request): JsonResponse
     {
         $dadosValidados = $request->validated();
+        $idClienteAutenticado = $request->user()->id_cliente;
 
-        $pedido = DB::transaction(function () use ($dadosValidados) {
+        $pedido = DB::transaction(function () use ($dadosValidados, $idClienteAutenticado) {
             $pedido = Pedido::create([
-                'id_cliente' => $dadosValidados['id_cliente'],
+                'id_cliente' => $idClienteAutenticado,
                 'status' => 'pendente',
                 'valor_total' => 0,
             ]);
@@ -66,19 +68,25 @@ class PedidoController extends Controller
         return response()->json($pedido, 201);
     }
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
+        $idClienteAutenticado = $request->user()->id_cliente;
+
         $pedidos = Pedido::with('itens.produto', 'cliente')
+            ->where('id_cliente', $idClienteAutenticado)
             ->orderBy('data_pedido', 'desc')
             ->paginate(15);
 
         return response()->json($pedidos);
     }
 
-    public function show(int $id): JsonResponse
+    public function show(Request $request, int $id): JsonResponse
     {
+        $idClienteAutenticado = $request->user()->id_cliente;
+
         $pedido = Pedido::with('itens.produto', 'cliente', 'pagamentos')
             ->where('id_pedido', $id)
+            ->where('id_cliente', $idClienteAutenticado)
             ->first();
 
         if (! $pedido) {
@@ -89,9 +97,15 @@ class PedidoController extends Controller
 
         return response()->json($pedido);
     }
+
     public function update(UpdatePedidoRequest $request, int $id): JsonResponse
     {
-        $pedido = Pedido::with('itens')->where('id_pedido', $id)->first();
+        $idClienteAutenticado = $request->user()->id_cliente;
+
+        $pedido = Pedido::with('itens')
+            ->where('id_pedido', $id)
+            ->where('id_cliente', $idClienteAutenticado)
+            ->first();
 
         if (! $pedido) {
             return response()->json([
@@ -103,7 +117,6 @@ class PedidoController extends Controller
         $statusAnterior = $pedido->status;
 
         DB::transaction(function () use ($pedido, $novoStatus, $statusAnterior) {
-            // Se está sendo cancelado (e não estava cancelado antes), devolve o estoque
             if ($novoStatus === 'cancelado' && $statusAnterior !== 'cancelado') {
                 foreach ($pedido->itens as $item) {
                     Produto::where('id_produto', $item->id_produto)
