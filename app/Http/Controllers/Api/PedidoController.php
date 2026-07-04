@@ -64,4 +64,28 @@ class PedidoController extends Controller
 
         return response()->json($pedido, 201);
     }
+
+    public function index(): JsonResponse
+    {
+        $pedidos = Pedido::with('itens.produto', 'cliente')
+            ->orderBy('data_pedido', 'desc')
+            ->paginate(15);
+
+        return response()->json($pedidos);
+    }
+
+    public function show(int $id): JsonResponse
+    {
+        $pedido = Pedido::with('itens.produto', 'cliente', 'pagamentos')
+            ->where('id_pedido', $id)
+            ->first();
+
+        if (! $pedido) {
+            return response()->json([
+                'message' => 'Pedido não encontrado.',
+            ], 404);
+        }
+
+        return response()->json($pedido);
+    }
 }
