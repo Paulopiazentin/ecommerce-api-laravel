@@ -12,3 +12,4 @@ Route::get('/produtos', [ProdutoController::class, 'index']);
 Route::post('/pedidos', [PedidoController::class, 'store']);
 Route::get('/pedidos', [PedidoController::class, 'index']);
 Route::get('/pedidos/{id}', [PedidoController::class, 'show']);
+Route::put('/pedidos/{id}', [PedidoController::class, 'update']);
