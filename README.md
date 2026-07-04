@@ -1,59 +1,210 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# E-commerce API — Laravel
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+API RESTful para um sistema de e-commerce, desenvolvida em Laravel como parte de um teste técnico.
 
-## About Laravel
+## 🎯 Objetivo
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+Testar conhecimento em APIs RESTful e boas práticas de desenvolvimento: endpoints para produtos e pedidos, com validação de entrada, tratamento de erros, autenticação e logs.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## 🛠️ Stack utilizada
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- **Framework:** Laravel 11
+- **Banco de dados:** MySQL
+- **Autenticação:** Laravel Sanctum (tokens, adequado para API consumida por SPA/mobile)
+- **Ambiente local:** Laragon (PHP, MySQL, Composer)
 
-## Learning Laravel
+## 📐 Modelagem de dados
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+O banco segue a estrutura definida em `database/tabelas_criadas.sql`:
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+| Tabela | Descrição |
+|---|---|
+| `clientes` | Clientes cadastrados (também usados como entidade de autenticação) |
+| `categorias` | Categorias de produtos |
+| `produtos` | Produtos do catálogo |
+| `produtos_categorias` | Tabela pivot (relação N:N entre produtos e categorias) |
+| `pedidos` | Pedidos realizados pelos clientes |
+| `itens_pedido` | Itens de cada pedido (chave composta `id_pedido` + `id_produto`) |
+| `pagamentos` | Pagamentos associados a pedidos |
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+As tabelas usam nomenclatura em português e chaves primárias customizadas (ex: `id_produto` em vez de `id`). Os Models Eloquent foram configurados para respeitar essa estrutura (`$table`, `$primaryKey`, `$timestamps = false`).
 
-## Agentic Development
+### Relacionamentos implementados
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+- `Cliente` `hasMany` `Pedido`
+- `Pedido` `belongsTo` `Cliente`, `hasMany` `ItemPedido`, `hasMany` `Pagamento`
+- `Produto` `belongsToMany` `Categoria` (via `produtos_categorias`)
+- `ItemPedido` `belongsTo` `Pedido` e `belongsTo` `Produto`
 
-```bash
-composer require laravel/boost --dev
+## 🚀 Setup do projeto
 
-php artisan boost:install
+1. Clone o repositório:
+   ```bash
+   git clone https://github.com/Paulopiazentin/ecommerce-api-laravel.git
+   cd ecommerce-api-laravel
+   ```
+2. Instale as dependências:
+   ```bash
+   composer install
+   ```
+3. Copie o arquivo de ambiente:
+   ```bash
+   cp .env.example .env
+   ```
+   Edite `.env` com suas credenciais MySQL:
+   ```env
+   DB_CONNECTION=mysql
+   DB_HOST=127.0.0.1
+   DB_PORT=3306
+   DB_DATABASE=ecommerce
+   DB_USERNAME=root
+   DB_PASSWORD=
+   ```
+4. Gere a chave da aplicação:
+   ```bash
+   php artisan key:generate
+   ```
+5. Rode as migrations (cria o banco e todas as tabelas, incluindo as do Sanctum):
+   ```bash
+   php artisan migrate
+   ```
+6. Suba o servidor:
+   ```bash
+   php artisan serve
+   ```
+
+A API estará disponível em `http://127.0.0.1:8000/api`.
+
+> 💡 Todas as requisições devem enviar o header `Accept: application/json`, para que erros e respostas venham sempre em JSON.
+
+## 📍 Endpoints implementados
+
+### Autenticação
+
+| Método | Rota | Protegida? | Descrição |
+|---|---|---|---|
+| POST | `/api/register` | Não | Cadastra um novo cliente e retorna um token |
+| POST | `/api/login` | Não | Autentica um cliente e retorna um token |
+| POST | `/api/logout` | Sim | Revoga o token atual |
+
+**Exemplo — Registro:**
+```json
+POST /api/register
+{
+    "nome": "João Silva",
+    "email": "joao@email.com",
+    "password": "123456",
+    "password_confirmation": "123456",
+    "telefone": "11999998888"
+}
+```
+Resposta (201):
+```json
+{
+    "cliente": { "id_cliente": 2, "nome": "João Silva", "email": "joao@email.com" },
+    "token": "3|pL7EKyR3j0CkbWB5n7XMJjU40RTAICJN7qlAp0Q4aebac961"
+}
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+**Exemplo — Login:**
+```json
+POST /api/login
+{
+    "email": "joao@email.com",
+    "password": "123456"
+}
+```
 
-## Contributing
+Rotas protegidas exigem o header:
+```
+Authorization: Bearer {token}
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### Produtos
 
-## Code of Conduct
+| Método | Rota | Protegida? | Descrição |
+|---|---|---|---|
+| GET | `/api/produtos` | Não | Lista produtos com filtros opcionais |
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+**Filtros disponíveis (query params):**
+- `nome` — busca parcial pelo nome do produto
+- `categoria_id` — filtra por categoria
+- `preco_min` / `preco_max` — filtra por faixa de preço
 
-## Security Vulnerabilities
+**Exemplo:**
+```
+GET /api/produtos?nome=mouse&preco_min=50&preco_max=300
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Resposta paginada (15 itens por página), incluindo categorias associadas a cada produto.
 
-## License
+### Pedidos
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
-"# ecommerce-api-laravel"  git init git add README.md git commit -m "first commit" git branch -M main git remote add origin https://github.com/Paulopiazentin/ecommerce-api-laravel.git git push -u origin main
+| Método | Rota | Protegida? | Descrição |
+|---|---|---|---|
+| POST | `/api/pedidos` | Sim | Cria um novo pedido para o cliente autenticado |
+| GET | `/api/pedidos` | Sim | Lista os pedidos do cliente autenticado |
+| GET | `/api/pedidos/{id}` | Sim | Consulta um pedido específico (somente do próprio cliente) |
+| PUT | `/api/pedidos/{id}` | Sim | Atualiza o status do pedido |
+
+**Exemplo — Criar pedido:**
+```json
+POST /api/pedidos
+Authorization: Bearer {token}
+
+{
+    "itens": [
+        { "id_produto": 1, "quantidade": 2 }
+    ]
+}
+```
+- O `id_cliente` é obtido automaticamente do token, nunca do body.
+- O `preco_unitario` e `valor_total` são calculados no servidor a partir do preço atual do produto — nunca confia no valor enviado pelo cliente.
+- Toda a operação roda dentro de uma `DB::transaction`, com `lockForUpdate()` no produto, evitando venda de estoque duplicada em requisições simultâneas.
+- Se o estoque for insuficiente, retorna 422 com mensagem explicativa.
+
+**Exemplo — Atualizar status:**
+```json
+PUT /api/pedidos/1
+Authorization: Bearer {token}
+
+{
+    "status": "cancelado"
+}
+```
+- Status aceitos: `pendente`, `pago`, `enviado`, `entregue`, `cancelado`.
+- Ao cancelar um pedido que não estava cancelado, o estoque dos produtos é devolvido automaticamente.
+
+## ✅ Tratamento de erros
+
+Erros são padronizados globalmente (`bootstrap/app.php`) e sempre retornam JSON:
+
+| Situação | Status | Exemplo |
+|---|---|---|
+| Validação falhou | 422 | `{"message": "Os dados enviados são inválidos.", "errors": {...}}` |
+| Não autenticado | 401 | `{"message": "Não autenticado."}` |
+| Recurso não encontrado | 404 | `{"message": "Pedido não encontrado."}` |
+| Rota inexistente | 404 | `{"message": "Rota não encontrada."}` |
+| Regra de negócio violada (ex: estoque) | 422 | `{"message": "Estoque insuficiente para o produto 'Mouse Gamer'..."}` |
+| Erro interno inesperado | 500 | `{"message": "Ocorreu um erro interno no servidor."}` |
+
+## 📝 Logs
+
+Operações importantes registram logs via `Log::info()`:
+- Criação de pedido (`id_pedido`, `id_cliente`, `valor_total`)
+- Atualização de status de pedido (status anterior e novo)
+- Registro e login de cliente
+
+Os logs ficam em `storage/logs/laravel.log`.
+
+## 🔒 Segurança e boas práticas aplicadas
+
+- Preço de produtos sempre lido do banco no momento da compra (nunca do request)
+- `lockForUpdate()` + transactions para evitar condições de corrida no controle de estoque
+- Senhas armazenadas com hash (`Hash::make`), nunca em texto plano, e ocultas nas respostas (`$hidden`)
+- Autorização por dono do recurso: cada cliente só acessa os próprios pedidos
+- Tokens de API via Sanctum, revogáveis individualmente (`logout`)
+
+## 🧪 Como testar
+
+Recomendado usar [Thunder Client](https://www.thunderclient.com/) (extensão do VS Code) ou [Postman](https://www.postman.com/) para testar endpoints `POST`/`PUT` e rotas autenticadas. Endpoints `GET` públicos podem ser testados direto no navegador.
