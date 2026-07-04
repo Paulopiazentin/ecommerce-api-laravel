@@ -3,12 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Laravel\Sanctum\HasApiTokens;
 
-class Cliente extends Model
+class Cliente extends Authenticatable
 {
-    use HasFactory;
+    use HasFactory, HasApiTokens;
 
     protected $table = 'clientes';
     protected $primaryKey = 'id_cliente';
@@ -19,6 +20,11 @@ class Cliente extends Model
         'email',
         'telefone',
         'endereco',
+        'password',
+    ];
+
+    protected $hidden = [
+        'password',
     ];
 
     public function pedidos(): HasMany

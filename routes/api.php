@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ProdutoController;
 use App\Http\Controllers\Api\PedidoController;
 
@@ -13,3 +14,8 @@ Route::post('/pedidos', [PedidoController::class, 'store']);
 Route::get('/pedidos', [PedidoController::class, 'index']);
 Route::get('/pedidos/{id}', [PedidoController::class, 'show']);
 Route::put('/pedidos/{id}', [PedidoController::class, 'update']);
+Route::post('/register', [AuthController::class, 'register']);
+Route::post('/login', [AuthController::class, 'login']);
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/logout', [AuthController::class, 'logout']);
+});
